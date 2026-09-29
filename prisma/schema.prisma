@@ -1,0 +1,145 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")   // le pooler, port 6543, pour l'app
+  directUrl  = env("DIRECT_URL")     // connexion directe, port 5432, pour les migrations
+  extensions = [vector]
+}
+
+enum Priority {
+  LOWEST_COST
+  FASTEST_DELIVERY
+  BEST_QUALITY
+  BALANCED // valeur par défaut si le client ne précise rien
+}
+
+
+model Project {
+  id          String   @id @default(uuid())
+  description String   @db.Text // texte libre, potentiellement long → Text, pas VarChar
+  deadline    DateTime
+  budget      Float
+  priority    Priority @default(BALANCED)
+  createdAt   DateTime @default(now()) @map("created_at")
+  analyses Analysis[]
+
+  @@map("projects")
+}
+
+
+// KNOWLEDGE_CHUNK — l'index RAG. Un chunk = un morceau de connaissance
+
+model KnowledgeChunk {
+  id    String @id @default(uuid())
+  title String // ex: "Authentification — niveaux de complexité"
+
+  // Sert à filtrer/regrouper si besoin (auth, payments, realtime, security...).
+  category String
+
+  projectTypes String[] @map("project_types")
+  tags         String[]
+
+  // Le texte réel envoyé au LLM comme contexte quand ce chunk est retrouvé.
+  content String @db.Text
+
+  
+  hoursMin Int? @map("hours_min")
+  hoursMax Int? @map("hours_max")
+
+  embedding Unsupported("vector(768)")?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  featureEstimates FeatureEstimate[]
+
+  @@map("knowledge_chunks")
+}
+
+// ANALYSIS — la partie INTERPRÉTATIVE produite par le LLM (post-RAG).
+
+model Analysis {
+  id        String  @id @default(uuid())
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id])
+
+  projectType String @map("project_type")
+
+  functionalRequirements Json @map("functional_requirements") // string[]
+  technicalRequirements  Json @map("technical_requirements")  // string[]
+  recommendedStack       Json @map("recommended_stack")       // { frontend, backend, infra, rationale }
+  requiredRoles          Json @map("required_roles")          // string[]
+  risks                  Json // string[]
+  missingInfo            Json @map("missing_info") // string[]
+
+  
+  rawLlmResponse Json @map("raw_llm_response")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // La SEULE partie de la sortie LLM qu'on normalise en vraies lignes, parce
+  // que le moteur de calcul déterministe doit pouvoir boucler dessus et
+  // sommer des valeurs  un blob Json ne s'itère pas proprement en SQL.
+  featureEstimates FeatureEstimate[]
+
+  
+  calculationResult CalculationResult?
+
+  @@map("analyses")
+}
+
+model FeatureEstimate {
+  id         String   @id @default(uuid())
+  analysisId String   @map("analysis_id")
+  analysis   Analysis @relation(fields: [analysisId], references: [id])
+
+  featureName String @map("feature_name") // ex: "Authentification"
+
+ 
+  complexityTier String @map("complexity_tier") // "simple" | "medium" | "complex"
+
+  kbChunkId String?         @map("kb_chunk_id")
+  kbChunk   KnowledgeChunk? @relation(fields: [kbChunkId], references: [id])
+
+  hoursMin Int @map("hours_min")
+  hoursMax Int @map("hours_max")
+
+  @@map("feature_estimates")
+}
+
+
+model CalculationResult {
+  id         String   @id @default(uuid())
+  analysisId String   @unique @map("analysis_id") // @unique = force le 1:1
+  analysis   Analysis @relation(fields: [analysisId], references: [id])
+
+  totalHoursMin Int @map("total_hours_min")
+  totalHoursMax Int @map("total_hours_max")
+
+  budgetMin Float @map("budget_min")
+  budgetMax Float @map("budget_max")
+
+  timelineWeeksMin Float @map("timeline_weeks_min")
+  timelineWeeksMax Float @map("timeline_weeks_max")
+
+  feasibilityVerdict String @map("feasibility_verdict")
+
+  budgetDelta        Float @map("budget_delta")
+  timelineDeltaWeeks Float @map("timeline_delta_weeks")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("calculation_results")
+}
+
+
+model RateCard {
+  id         String @id @default(uuid())
+  role       String @unique // ex: "full-stack developer", "ui-ux designer"
+  hourlyRate Float  @map("hourly_rate")
+
+  @@map("rate_cards")
+}
