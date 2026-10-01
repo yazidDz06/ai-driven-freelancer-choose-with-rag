@@ -8,16 +8,18 @@ hours_min: null
 hours_max: null
 ---
 
-Le choix de stack doit avant tout suivre le type de projet, pas les préférences technologiques du moment.
+Le choix de stack doit suivre le type de projet et le contexte d'équipe/organisation — il n'existe pas une seule stack "par défaut" valable pour tout. Plusieurs écosystèmes sont équivalents en capacité ; le bon choix dépend de qui va construire et maintenir le projet.
 
-**Site vitrine / contenu** : générateur de site statique ou Next.js en mode statique, pas besoin de backend dédié dans la majorité des cas. Priorité à la simplicité et au temps de chargement.
+**Écosystème JavaScript/TypeScript (Next.js, Node.js/NestJS, React Native)** : pertinent pour des startups et des équipes qui veulent un seul langage du frontend au backend, un time-to-market rapide, et un large bassin de développeurs disponibles. C'est un bon choix par défaut pour un MVP indépendant, mais pas une obligation.
 
-**Application web / SaaS classique** : frontend React ou Next.js, backend Node.js (NestJS/Express) ou équivalent dans un autre langage selon l'équipe, base de données relationnelle (PostgreSQL) sauf besoin spécifique de flexibilité de schéma. C'est le cas le plus courant, où un stack "ennuyeux mais éprouvé" est presque toujours préférable à une stack expérimentale.
+**Écosystème Java/Spring (Spring Boot, Angular)** : pertinent pour des organisations déjà équipées en Java, des systèmes avec de fortes exigences de fiabilité/transactions (finance, assurance, secteur public), ou des équipes qui valorisent un typage strict et un écosystème d'entreprise mature. Angular est souvent préféré à React/Vue dans ce contexte par cohérence d'outillage (CLI intégré, conventions strictes, TypeScript natif).
 
-**Application mobile** : React Native ou Flutter si un seul code partagé iOS/Android est souhaité (cas le plus fréquent pour un MVP) ; natif (Swift/Kotlin) seulement si des performances ou fonctionnalités spécifiques à la plateforme sont critiques.
+**Écosystème .NET (ASP.NET Core, Blazor ou React/Angular en frontend)** : pertinent pour des organisations déjà sur l'écosystème Microsoft (Azure, Active Directory, outils internes en C#), ou des produits qui doivent s'intégrer étroitement à des systèmes Windows/Office existants.
 
-**API-only / backend pour intégrations tierces** : un framework backend classique exposant une API REST ou GraphQL, sans frontend dédié. Priorité à la documentation de l'API (OpenAPI/Swagger) et à la stabilité des contrats d'interface.
+**Python (Django, FastAPI)** : pertinent quand le projet a une composante data/IA/ML forte (réutilisation de librairies Python de data science), ou pour des équipes qui valorisent la vitesse de développement de Django pour du CRUD classique.
 
-**Marketplace / e-commerce** : les mêmes bases qu'une SaaS classique, avec une attention particulière portée aux intégrations de paiement (voir le chunk paiements) et à la recherche/filtrage de catalogue, qui bénéficie souvent d'un moteur de recherche dédié (Algolia, Meilisearch) au-delà d'un certain volume de produits.
+**PHP (Laravel)** : toujours un choix pertinent et sous-estimé pour des applications web classiques et de l'e-commerce — écosystème mature, coût d'hébergement bas, très rapide pour prototyper du CRUD.
 
-Le critère décisif n'est presque jamais "quelle technologie est la plus moderne", mais "quelle technologie l'équipe/le développeur maîtrise déjà" — un stack familier livré à temps vaut mieux qu'un stack idéal mal maîtrisé et livré en retard.
+**Mobile natif (Swift/Kotlin) vs cross-platform (React Native/Flutter)** : le natif reste pertinent quand les performances ou des fonctionnalités spécifiques à la plateforme sont critiques ; le cross-platform reste le bon choix par défaut pour un MVP qui vise les deux plateformes avec une seule équipe.
+
+Le critère décisif n'est presque jamais "quelle technologie est la plus moderne", mais l'alignement avec le contexte réel : l'écosystème technique déjà en place dans l'organisation du client, le bassin de développeurs disponible localement, et les contraintes de fiabilité/conformité du secteur. Un stack familier à l'équipe qui va construire le projet, livré à temps, vaut toujours mieux qu'un stack théoriquement idéal mais mal maîtrisé.

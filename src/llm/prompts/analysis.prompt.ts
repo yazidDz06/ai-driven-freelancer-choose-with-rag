@@ -5,12 +5,12 @@ import {
   EFFORT_CATALOG,
 } from "../schemas/analysis.schema";
 
-// Ce que le client a saisi dans le formulaire.
+
 export interface ProjectInput {
   description: string;
-  deadline: string; // ex: "2026-12-31"
+  deadline: string; 
   budget: number;
-  priority: string; // ex: "BALANCED"
+  priority: string; 
 }
 
 const SYSTEM_PROMPT = `You are a senior software project analyst. You analyze a client's project description and produce a structured technical analysis.
@@ -22,6 +22,7 @@ STRICT RULES:
 - List in featureEstimates EVERY feature that requires development work (authentication, payments, chat, notifications, file upload, admin, search, reviews...), including implicit ones. Every requirement listed in functionalRequirements or technicalRequirements must have a matching entry.
 - For each feature, set kbChunkId to the id of the EFFORT CATALOG entry that covers that feature, even if its full section is not shown in the KNOWLEDGE SECTIONS. Use null only if no catalog entry fits (for example search, reviews, booking flow).
 - Choose complexityTier by matching the project to the levels described in the knowledge sections. When you hesitate between two tiers, choose the higher one: underestimating a project is worse than overestimating it.
+- STACK DIVERSITY: do not default to the same JavaScript/TypeScript stack (Next.js, NestJS) for every project. Consider the full range of ecosystems covered in the knowledge sections (Java/Spring, .NET, Python, PHP, mobile native vs cross-platform) and pick whichever genuinely fits this project's context, scale and likely team. Justify the choice in "rationale" instead of assuming a single default.
 - Requirements hidden behind a simple description count: list what the project implicitly needs, and put unclear points in missingInfo.
 - Answer with a single JSON object and nothing else (no markdown, no comments).`;
 

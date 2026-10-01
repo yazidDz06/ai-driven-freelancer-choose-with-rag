@@ -28,7 +28,7 @@ export class AnalysisService {
 
     // 1) Le snapshot brut de ce que le client a saisi — aucune IA ici.
     const project = await this.prisma.project.create({
-      data: { description: dto.description, deadline, budget: dto.budget, priority },
+      data: { description: dto.description, deadline, budget: dto.budget, priority, region: dto.region },
     });
 
     // 2) RAG : quelles fiches sont pertinentes pour ce projet ?
@@ -46,6 +46,7 @@ export class AnalysisService {
       analysis.requiredRoles,
       dto.budget,
       deadline,
+      dto.region,
     );
 
     // 5) Persistance. Les appels réseau lents (retrieval, LLM) sont déjà

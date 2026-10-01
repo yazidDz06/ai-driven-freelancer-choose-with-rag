@@ -1,19 +1,16 @@
 import { Injectable } from "@nestjs/common";
+import type { Region } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { AnalysisResult, EffortSourceId } from "../llm/schemas/analysis.schema";
 
 
-// Une fonctionnalité SANS fiche associée (kbChunkId: null, ex: "recherche")
-// utilise ces fourchettes génériques plutôt que de valoir 0 heure.
 const FALLBACK_TIER_HOURS: Record<string, [number, number]> = {
   simple: [8, 16],
   medium: [16, 40],
   complex: [40, 80],
 };
 
-// Heures "utiles" par semaine et par personne — pas 40h : ça tient compte
-// des réunions, imprévus, contexte-switching. Hypothèse volontairement
-// prudente pour ne pas promettre un délai irréaliste.
+
 const WEEKLY_CAPACITY_HOURS = 25;
 
 
@@ -27,7 +24,8 @@ export interface FeatureHourEstimate {
   kbChunkId: string | null;
   hoursMin: number;
   hoursMax: number;
-  
+  // Permet au frontend d'afficher "estimation basée sur notre base de
+  // connaissances" vs "estimation générique" — transparence pour l'utilisateur.
   source: "knowledge-base" | "fallback";
 }
 
@@ -53,13 +51,14 @@ export class EstimationService {
     requiredRoles: string[],
     clientBudget: number,
     clientDeadline: Date,
+    region: Region,
   ): Promise<CalculationResult> {
     const featureBreakdown = await this.resolveFeatureHours(featureEstimates);
 
     const totalHoursMin = sum(featureBreakdown.map((f) => f.hoursMin));
     const totalHoursMax = sum(featureBreakdown.map((f) => f.hoursMax));
 
-    const hourlyRate = await this.resolveHourlyRate(requiredRoles);
+    const hourlyRate = await this.resolveHourlyRate(requiredRoles, region);
     const budgetMin = totalHoursMin * hourlyRate;
     const budgetMax = totalHoursMax * hourlyRate;
 
@@ -96,8 +95,7 @@ export class EstimationService {
       .map((f) => f.kbChunkId)
       .filter((id): id is EffortSourceId => id !== null);
 
-    // Une seule requête pour toutes les fiches utilisées, plutôt qu'une
-    // requête par feature dans la boucle (évite le problème classique N+1).
+  
     const chunks = await this.prisma.knowledgeChunk.findMany({
       where: { id: { in: chunkIds } },
       select: { id: true, hoursMin: true, hoursMax: true },
@@ -135,12 +133,13 @@ export class EstimationService {
     });
   }
 
- 
-  private async resolveHourlyRate(requiredRoles: string[]): Promise<number> {
+  
+  private async resolveHourlyRate(requiredRoles: string[], region: Region): Promise<number> {
     if (requiredRoles.length === 0) return DEFAULT_HOURLY_RATE;
 
+   
     const rates = await this.prisma.rateCard.findMany({
-      where: { role: { in: requiredRoles } },
+      where: { role: { in: requiredRoles }, region },
       select: { hourlyRate: true },
     });
 
@@ -150,12 +149,7 @@ export class EstimationService {
   }
 }
 
-// Une fiche donne UNE fourchette globale (ex: auth = 16-120h) qui couvre
-// plusieurs niveaux de complexité décrits dans son texte. On n'a pas de
-// chiffre exact par niveau en base (seulement dans le texte de la fiche),
-// donc on divise la fourchette totale en 3 tiers égaux. C'est une
-// approximation assumée, pas une science exacte — mais déterministe,
-// reproductible, et bien plus défendable qu'un chiffre inventé par l'IA.
+
 function splitRangeByTier(min: number, max: number, tier: string): [number, number] {
   const third = (max - min) / 3;
   switch (tier) {
@@ -183,18 +177,14 @@ function weeksBetween(from: Date, to: Date): number {
   return (to.getTime() - from.getTime()) / msPerWeek;
 }
 
-// Compare une valeur client (budget ou délai en semaines) à une fourchette
-// calculée. >= max : à l'aise. Entre min et max : jouable mais juste.
-// < min : hors de portée.
+
 function compareToRange(clientValue: number, min: number, max: number): FeasibilityVerdict {
   if (clientValue >= max) return "realistic";
   if (clientValue >= min) return "tight";
   return "unrealistic";
 }
 
-// Le verdict final retient le PIRE des deux axes (budget, délai) : un projet
-// avec un budget confortable mais un délai intenable reste globalement "tight"
-// ou "unrealistic", pas "realistic".
+
 function worstOf(a: FeasibilityVerdict, b: FeasibilityVerdict): FeasibilityVerdict {
   const severity: Record<FeasibilityVerdict, number> = { realistic: 0, tight: 1, unrealistic: 2 };
   return severity[a] >= severity[b] ? a : b;

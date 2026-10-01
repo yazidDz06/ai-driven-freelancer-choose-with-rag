@@ -1,11 +1,12 @@
 import { IsDateString, IsEnum, IsNumber, IsOptional, IsPositive, IsString, MinLength } from "class-validator";
-import { Priority } from "@prisma/client";
+import { Priority, Region } from "@prisma/client"; // générés depuis les enums de schema.prisma
 
-// Ce DTO est la seule porte d'entrée du endpoint public
+
 export class CreateProjectDto {
   @IsString()
   @MinLength(20, { message: "Décris ton projet en au moins 20 caractères." })
   description: string;
+
 
   @IsDateString()
   deadline: string;
@@ -17,4 +18,7 @@ export class CreateProjectDto {
   @IsOptional()
   @IsEnum(Priority)
   priority?: Priority; 
+
+  @IsEnum(Region)
+  region: Region;
 }

@@ -18,48 +18,63 @@ enum Priority {
 }
 
 
+// ENUM — la région où le client compte embaucher. Détermine le taux horaire
+// utilisé par EstimationService : un même projet coûte très différemment
+
+enum Region {
+  NORTH_AMERICA
+  WESTERN_EUROPE
+  EASTERN_EUROPE
+  LATIN_AMERICA
+  AFRICA
+  ASIA
+}
+
+
 model Project {
   id          String   @id @default(uuid())
   description String   @db.Text // texte libre, potentiellement long → Text, pas VarChar
   deadline    DateTime
   budget      Float
   priority    Priority @default(BALANCED)
+ 
+  region      Region   @default(WESTERN_EUROPE)
   createdAt   DateTime @default(now()) @map("created_at")
+
+  
   analyses Analysis[]
 
   @@map("projects")
 }
 
 
-// KNOWLEDGE_CHUNK — l'index RAG. Un chunk = un morceau de connaissance
-
 model KnowledgeChunk {
   id    String @id @default(uuid())
   title String // ex: "Authentification — niveaux de complexité"
 
-  // Sert à filtrer/regrouper si besoin (auth, payments, realtime, security...).
   category String
 
+ 
   projectTypes String[] @map("project_types")
   tags         String[]
 
-  // Le texte réel envoyé au LLM comme contexte quand ce chunk est retrouvé.
+ 
   content String @db.Text
 
-  
   hoursMin Int? @map("hours_min")
   hoursMax Int? @map("hours_max")
 
+  
   embedding Unsupported("vector(768)")?
 
   createdAt DateTime @default(now()) @map("created_at")
 
+  
   featureEstimates FeatureEstimate[]
 
   @@map("knowledge_chunks")
 }
 
-// ANALYSIS — la partie INTERPRÉTATIVE produite par le LLM (post-RAG).
 
 model Analysis {
   id        String  @id @default(uuid())
@@ -80,16 +95,13 @@ model Analysis {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  // La SEULE partie de la sortie LLM qu'on normalise en vraies lignes, parce
-  // que le moteur de calcul déterministe doit pouvoir boucler dessus et
-  // sommer des valeurs  un blob Json ne s'itère pas proprement en SQL.
   featureEstimates FeatureEstimate[]
 
-  
   calculationResult CalculationResult?
 
   @@map("analyses")
 }
+
 
 model FeatureEstimate {
   id         String   @id @default(uuid())
@@ -101,15 +113,16 @@ model FeatureEstimate {
  
   complexityTier String @map("complexity_tier") // "simple" | "medium" | "complex"
 
+
   kbChunkId String?         @map("kb_chunk_id")
   kbChunk   KnowledgeChunk? @relation(fields: [kbChunkId], references: [id])
 
+  
   hoursMin Int @map("hours_min")
   hoursMax Int @map("hours_max")
 
   @@map("feature_estimates")
 }
-
 
 model CalculationResult {
   id         String   @id @default(uuid())
@@ -125,6 +138,7 @@ model CalculationResult {
   timelineWeeksMin Float @map("timeline_weeks_min")
   timelineWeeksMax Float @map("timeline_weeks_max")
 
+
   feasibilityVerdict String @map("feasibility_verdict")
 
   budgetDelta        Float @map("budget_delta")
@@ -138,8 +152,12 @@ model CalculationResult {
 
 model RateCard {
   id         String @id @default(uuid())
-  role       String @unique // ex: "full-stack developer", "ui-ux designer"
+  role       String // ex: "fullstack-developer", "ui-ux-designer"
+  region     Region
   hourlyRate Float  @map("hourly_rate")
 
+  // Un seul taux par couple (rôle, région) — plus un taux unique par rôle.
+  // EstimationService interroge toujours les deux ensemble.
+  @@unique([role, region])
   @@map("rate_cards")
 }
